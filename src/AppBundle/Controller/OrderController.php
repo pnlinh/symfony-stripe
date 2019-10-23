@@ -64,7 +64,7 @@ class OrderController extends BaseController
         return $this->render('order/checkout.html.twig', [
             'products' => $products,
             'cart' => $this->get('shopping_cart'),
-            'stripe_public_ket' => $this->getParameter('stripe_public_key'),
+            'stripe_public_key' => $this->getParameter('stripe_public_key'),
         ]);
     }
 }
