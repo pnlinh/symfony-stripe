@@ -25,7 +25,7 @@ class OrderController extends BaseController
     }
 
     /**
-     * @Route("/checkout", name="order_checkout")
+     * @Route("/checkout", name="order_checkout", schemes={"https"})
      * @Security("is_granted('ROLE_USER')")
      */
     public function checkoutAction(Request $request)
