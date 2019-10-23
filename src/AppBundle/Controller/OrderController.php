@@ -7,8 +7,9 @@ use AppBundle\Entity\User;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
-use Stripe\Charge;
 use Stripe\Customer;
+use Stripe\Invoice;
+use Stripe\InvoiceItem;
 use Stripe\Stripe;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -59,12 +60,19 @@ class OrderController extends BaseController
                 $customer->save();
             }
 
-            Charge::create([
-                'amount' => $this->get('shopping_cart')->getTotal() * 100,
-                'currency' => 'usd',
+            foreach ($this->get('shopping_cart')->getProducts() as $product) {
+                InvoiceItem::create([
+                    'amount' => $product->getPrice() * 100,
+                    'currency' => 'usd',
+                    'customer' => $user->getStripeCustomerId(),
+                    'description' => $product->getName(),
+                ]);
+            }
+
+            $invoice = Invoice::create([
                 'customer' => $user->getStripeCustomerId(),
-                'description' => 'First test charge!',
             ]);
+            $invoice->pay();
 
             $this->get('shopping_cart')->emptyCart();
             $this->addFlash('success', 'Order complete! Yay');
