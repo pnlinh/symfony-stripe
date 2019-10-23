@@ -6,6 +6,8 @@ use AppBundle\Entity\Product;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
+use Stripe\Charge;
+use Stripe\Stripe;
 use Symfony\Component\HttpFoundation\Request;
 
 class OrderController extends BaseController
@@ -16,8 +18,7 @@ class OrderController extends BaseController
      */
     public function addProductToCartAction(Product $product)
     {
-        $this->get('shopping_cart')
-            ->addProduct($product);
+        $this->get('shopping_cart')->addProduct($product);
 
         $this->addFlash('success', 'Product added!');
 
@@ -33,13 +34,25 @@ class OrderController extends BaseController
         $products = $this->get('shopping_cart')->getProducts();
 
         if ($request->isMethod('POST')) {
-            dump($request->get('stripeToken'));
+            $token = $request->get('stripeToken');
+
+            Stripe::setApiKey('sk_test_TjVB3xoIHUyM1fJtjH5eAAN100D0dnCIMM');
+            Charge::create([
+                "amount" => $this->get('shopping_cart')->getTotal() * 100,
+                "currency" => "usd",
+                "source" => $token,
+                "description" => "First test charge!",
+            ]);
+
+            $this->get('shopping_cart')->emptyCart();
+            $this->addFlash('success', 'Order complete! Yay');
+
+            return $this->redirectToRoute('homepage');
         }
 
-        return $this->render('order/checkout.html.twig', array(
+        return $this->render('order/checkout.html.twig', [
             'products' => $products,
-            'cart' => $this->get('shopping_cart')
-        ));
-
+            'cart' => $this->get('shopping_cart'),
+        ]);
     }
 }
