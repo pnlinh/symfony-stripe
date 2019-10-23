@@ -3,10 +3,12 @@
 namespace AppBundle\Controller;
 
 use AppBundle\Entity\Product;
+use AppBundle\Entity\User;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
 use Stripe\Charge;
+use Stripe\Customer;
 use Stripe\Stripe;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -37,11 +39,31 @@ class OrderController extends BaseController
             $token = $request->get('stripeToken');
 
             Stripe::setApiKey($this->getParameter('stripe_secret_key'));
+
+            /** @var User $user */
+            $user = $this->getUser();
+
+            if (!$user->getStripeCustomerId()) {
+                $customer = Customer::create([
+                    'email' => $user->getEmail(),
+                    'source' => $token
+                ]);
+
+                $user->setStripeCustomerId($customer->id);
+                $em = $this->getDoctrine()->getManager();
+                $em->persist($user);
+                $em->flush();
+            } else {
+                $customer = Customer::retrieve($user->getStripeCustomerId());
+                $customer->source = $token;
+                $customer->save();
+            }
+
             Charge::create([
-                "amount" => $this->get('shopping_cart')->getTotal() * 100,
-                "currency" => "usd",
-                "source" => $token,
-                "description" => "First test charge!",
+                'amount' => $this->get('shopping_cart')->getTotal() * 100,
+                'currency' => 'usd',
+                'customer' => $user->getStripeCustomerId(),
+                'description' => 'First test charge!',
             ]);
 
             $this->get('shopping_cart')->emptyCart();
